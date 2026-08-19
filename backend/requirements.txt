@@ -1,0 +1,13 @@
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+sqlalchemy==2.0.23
+pydantic==2.5.0
+pytest==7.4.3
+httpx==0.25.2
+python-multipart==0.0.6
+redis==5.0.1
+celery==5.3.4
+prometheus-client==0.19.0
+structlog==24.1.0
+flower==2.0.1
+websockets==12.0

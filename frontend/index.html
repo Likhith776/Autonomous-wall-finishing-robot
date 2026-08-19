@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wall Robot Coverage System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <h1>Wall Coverage System</h1>
+                <p>Intelligent autonomous path planning</p>
+            </div>
+        </header>
+
+        <main>
+            <!-- Configuration Panel -->
+            <section class="panel config-panel">
+                <h2>Configuration</h2>
+                
+                <div class="input-group">
+                    <label for="wallWidth">Wall Width (m)</label>
+                    <input type="number" id="wallWidth" value="5" min="0.1" max="100" step="0.1">
+                </div>
+                
+                <div class="input-group">
+                    <label for="wallHeight">Wall Height (m)</label>
+                    <input type="number" id="wallHeight" value="5" min="0.1" max="100" step="0.1">
+                </div>
+                
+                <div class="input-group">
+                    <label for="toolWidth">Tool Width (m)</label>
+                    <input type="number" id="toolWidth" value="0.1" min="0.01" max="1" step="0.01">
+                </div>
+                
+                <div class="input-group">
+                    <label for="overlap">Overlap (%)</label>
+                    <input type="number" id="overlap" value="2" min="0" max="50" step="1">
+                </div>
+
+                <div class="section-divider"></div>
+
+                <h3>Obstacles</h3>
+                <div id="obstaclesList" class="obstacles-container"></div>
+                
+                <button id="addObstacle" class="btn btn-ghost">
+                    <span class="btn-icon">+</span>
+                    Add Obstacle
+                </button>
+                
+                <div class="section-divider"></div>
+                
+                <div class="input-group">
+                    <label for="backgroundMode">
+                        <input type="checkbox" id="backgroundMode" style="width: auto; display: inline-block; margin-right: 8px;">
+                        Use background processing (async)
+                    </label>
+                </div>
+                
+                <div class="action-group">
+                    <button id="generatePath" class="btn btn-primary">Generate Path</button>
+                    <button id="clearAll" class="btn btn-secondary">Clear All</button>
+                </div>
+            </section>
+
+            <!-- Visualization Panel -->
+            <section class="panel visualization-panel">
+                <div class="panel-header">
+                    <h2>Path Visualization</h2>
+                    <div id="connectionStatus" class="connection-status">
+                        <span class="status-dot"></span>
+                        <span class="status-text">Disconnected</span>
+                    </div>
+                </div>
+                
+                <div class="canvas-wrapper">
+                    <canvas id="pathCanvas" width="800" height="800"></canvas>
+                    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+                        <div class="spinner"></div>
+                        <div class="loading-text">Generating path...</div>
+                        <div class="progress-text" id="progressText">Starting...</div>
+                    </div>
+                </div>
+                
+                <div class="playback-controls">
+                    <button id="playPause" class="control-btn" disabled>
+                        <span class="icon">▶</span>
+                    </button>
+                    <button id="reset" class="control-btn" disabled>
+                        <span class="icon">⟲</span>
+                    </button>
+                    <div class="slider-container">
+                        <input type="range" id="speedControl" min="1" max="100" value="50" disabled>
+                        <span class="slider-label">Speed</span>
+                    </div>
+                </div>
+                
+                <div class="stats-grid" id="stats">
+                    <div class="stat-card">
+                        <span class="stat-label">Distance</span>
+                        <span class="stat-value" id="totalDistance">—</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Time</span>
+                        <span class="stat-value" id="computationTime">—</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Efficiency</span>
+                        <span class="stat-value" id="pathEfficiency">—</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Coverage</span>
+                        <span class="stat-value" id="coverage">—</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Algorithm Panel -->
+            <section class="panel info-panel">
+                <h2>Algorithm</h2>
+                
+                <div class="info-content">
+                    <h3>Boustrophedon Coverage</h3>
+                    <p>
+                        The algorithm generates an efficient back-and-forth pattern that ensures 
+                        complete coverage while minimizing redundant paths.
+                    </p>
+                    
+                    <h3>Approach</h3>
+                    <div class="info-list">
+                        <div class="info-item">
+                            <span class="info-number">1</span>
+                            <span class="info-text">Simple sweeps for obstacle-free walls</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-number">2</span>
+                            <span class="info-text">Cellular decomposition for obstacles</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-number">3</span>
+                            <span class="info-text">Serpentine patterns minimize travel</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-number">4</span>
+                            <span class="info-text">Optimal cell connection sequence</span>
+                        </div>
+                    </div>
+                    
+                    <h3>Benefits</h3>
+                    <div class="benefit-tags">
+                        <span class="tag">Complete Coverage</span>
+                        <span class="tag">Minimal Redundancy</span>
+                        <span class="tag">Obstacle Handling</span>
+                        <span class="tag">Fast Computation</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
