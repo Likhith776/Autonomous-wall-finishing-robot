@@ -1,5 +1,7 @@
 // Configuration
 const API_URL = 'http://localhost:8000';
+// If we are running on GitHub Pages (or any non-localhost host), enable DEMO_MODE
+const DEMO_MODE = (location && location.hostname && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1');
 
 // State management
 const state = {
@@ -204,7 +206,7 @@ async function generatePath() {
         
         const useBackground = elements.backgroundMode.checked;
         
-        // Create wall
+        // Create wall (or simulate in DEMO_MODE)
         const wallData = {
             width: parseFloat(elements.wallWidth.value),
             height: parseFloat(elements.wallHeight.value),
@@ -215,20 +217,28 @@ async function generatePath() {
                 height: obs.height
             }))
         };
-        
-        const wallResponse = await fetch(`${API_URL}/walls/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(wallData)
-        });
-        
-        if (!wallResponse.ok) {
-            const error = await wallResponse.json();
-            throw new Error(error.detail || 'Failed to create wall');
+
+        let wall = null;
+
+        if (DEMO_MODE) {
+            // Simulate wall creation
+            wall = { id: 'demo-wall-' + Date.now(), ...wallData };
+            state.wallId = wall.id;
+        } else {
+            const wallResponse = await fetch(`${API_URL}/walls/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(wallData)
+            });
+
+            if (!wallResponse.ok) {
+                const error = await wallResponse.json();
+                throw new Error(error.detail || 'Failed to create wall');
+            }
+
+            wall = await wallResponse.json();
+            state.wallId = wall.id;
         }
-        
-        const wall = await wallResponse.json();
-        state.wallId = wall.id;
         
         // Generate trajectory
         const trajectoryData = {
@@ -237,51 +247,97 @@ async function generatePath() {
             overlap: parseFloat(elements.overlap.value) / 100
         };
         
-        const trajectoryUrl = useBackground 
-            ? `${API_URL}/trajectories/?background=true`
-            : `${API_URL}/trajectories/`;
-        
-        const trajectoryResponse = await fetch(trajectoryUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(trajectoryData)
-        });
-        
-        if (!trajectoryResponse.ok) {
-            const error = await trajectoryResponse.json();
-            throw new Error(error.detail || 'Failed to generate trajectory');
-        }
-        
-        const result = await trajectoryResponse.json();
-        
-        if (useBackground) {
-            // Background mode - connect WebSocket
-            elements.loadingOverlay.style.display = 'flex';
-            elements.progressText.textContent = 'Connecting to real-time updates...';
-            connectWebSocket(wall.id);
-            showNotification('Trajectory generation started in background', 'success');
-        } else {
-            // Synchronous mode - process result directly
-            const trajectory = result.trajectory;
-            state.trajectoryId = trajectory.id;
-            state.pathData = trajectory.path_data;
+        // If demo mode, synthesize a simple lawnmower path client-side
+        if (DEMO_MODE) {
+            const width = wallData.width;
+            const height = wallData.height;
+            const toolWidth = trajectoryData.tool_width || parseFloat(elements.toolWidth.value);
+            const overlap = trajectoryData.overlap || (parseFloat(elements.overlap.value) / 100);
+            const spacing = Math.max(0.05, toolWidth * (1 - overlap));
+
+            const path = [];
+            let y = spacing / 2;
+            let leftToRight = true;
+            while (y <= height) {
+                if (leftToRight) {
+                    for (let x = 0; x <= width; x += 0.1) path.push([parseFloat(x.toFixed(3)), parseFloat(y.toFixed(3))]);
+                } else {
+                    for (let x = width; x >= 0; x -= 0.1) path.push([parseFloat(x.toFixed(3)), parseFloat(y.toFixed(3))]);
+                }
+                y += spacing;
+                leftToRight = !leftToRight;
+            }
+
+            // Simple stats
+            let totalDist = 0;
+            for (let i = 1; i < path.length; i++) {
+                const dx = path[i][0] - path[i-1][0];
+                const dy = path[i][1] - path[i-1][1];
+                totalDist += Math.hypot(dx, dy);
+            }
+
+            state.pathData = path;
             state.currentStep = 0;
-            
-            // Update stats
-            elements.totalDistance.textContent = `${trajectory.total_distance.toFixed(2)} m`;
-            elements.computationTime.textContent = `${trajectory.computation_time.toFixed(3)} s`;
-            elements.pathEfficiency.textContent = `${trajectory.path_efficiency.toFixed(1)}%`;
-            elements.coverage.textContent = `${trajectory.coverage_percentage.toFixed(1)}%`;
-            
-            // Enable controls
+            state.trajectoryId = 'demo-traj-' + Date.now();
+
+            elements.totalDistance.textContent = `${totalDist.toFixed(2)} m`;
+            elements.computationTime.textContent = `${(Math.random() * 0.2 + 0.05).toFixed(3)} s`;
+            elements.pathEfficiency.textContent = `95.0%`;
+            elements.coverage.textContent = `~${Math.min(100, Math.max(80, 100 - state.obstacles.length * 5)).toFixed(1)}%`;
+
             elements.playPause.disabled = false;
             elements.reset.disabled = false;
             elements.speedControl.disabled = false;
-            
-            // Draw path
+
             drawCanvas();
-            
-            showNotification('Path generated successfully!', 'success');
+            showNotification('Demo path generated (client-side)', 'success');
+        } else {
+            const trajectoryUrl = useBackground 
+                ? `${API_URL}/trajectories/?background=true`
+                : `${API_URL}/trajectories/`;
+
+            const trajectoryResponse = await fetch(trajectoryUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(trajectoryData)
+            });
+
+            if (!trajectoryResponse.ok) {
+                const error = await trajectoryResponse.json();
+                throw new Error(error.detail || 'Failed to generate trajectory');
+            }
+
+            const result = await trajectoryResponse.json();
+
+            if (useBackground) {
+                // Background mode - connect WebSocket
+                elements.loadingOverlay.style.display = 'flex';
+                elements.progressText.textContent = 'Connecting to real-time updates...';
+                connectWebSocket(wall.id);
+                showNotification('Trajectory generation started in background', 'success');
+            } else {
+                // Synchronous mode - process result directly
+                const trajectory = result.trajectory;
+                state.trajectoryId = trajectory.id;
+                state.pathData = trajectory.path_data;
+                state.currentStep = 0;
+                
+                // Update stats
+                elements.totalDistance.textContent = `${trajectory.total_distance.toFixed(2)} m`;
+                elements.computationTime.textContent = `${trajectory.computation_time.toFixed(3)} s`;
+                elements.pathEfficiency.textContent = `${trajectory.path_efficiency.toFixed(1)}%`;
+                elements.coverage.textContent = `${trajectory.coverage_percentage.toFixed(1)}%`;
+                
+                // Enable controls
+                elements.playPause.disabled = false;
+                elements.reset.disabled = false;
+                elements.speedControl.disabled = false;
+                
+                // Draw path
+                drawCanvas();
+                
+                showNotification('Path generated successfully!', 'success');
+            }
         }
     } catch (error) {
         console.error('Error:', error);
